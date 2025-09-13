@@ -72,6 +72,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'whatsapp.wsgi.application'
 
+# This tells Django, Instead of using the standard web server interface (WSGI), 
+# use this special ASGI interface.
+
+ASGI_APPLICATION = 'whatsapp.asgi.application'
+
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
