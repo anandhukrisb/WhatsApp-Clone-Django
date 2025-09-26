@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <!-- Using Tailwind CSS for styling via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex flex-col h-screen">
+        <header class="bg-blue-600 text-white p-4 text-center shadow-md">
+            <h1 class="text-2xl font-bold">Django WebSocket Chat</h1>
+        </header>
+
+        <div class="flex flex-col flex-grow p-4 md:p-6 lg:p-8 overflow-hidden">
+            <!-- Message display area -->
+            <div id="chat-log" class="flex-grow bg-white rounded-t-xl shadow-inner p-6 overflow-y-auto space-y-4 mb-4">
+                <!-- Chat messages will be appended here -->
+                <div class="text-center w-full text-sm text-gray-500 italic my-2">
+                    Please enter your name to connect to the chat.
+                </div>
+            </div>
+
+            <!-- Message input form -->
+            <form id="chat-form" class="flex gap-3">
+                <input id="chat-message-input" type="text" placeholder="Type your message..." autocomplete="off"
+                    class="flex-grow px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
+                <button id="chat-message-submit" type="submit"
+                    class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatLog = document.querySelector('#chat-log');
+        const chatForm = document.querySelector('#chat-form');
+        const chatInput = document.querySelector('#chat-message-input');
+        
+        // Prompt for username
+        const username = prompt("Please enter your name to join the chat:");
+
+        // Establish WebSocket connection
+        // The path `/ws/chat/` should match what's in your chat/routing.py
+        const chatSocket = new WebSocket(
+            'ws://' + "127.0.0.1" + '/ws/chatapp/'
+        );
+
+        // --- WebSocket Event Handlers ---
+
+        chatSocket.onopen = function(e) {
+            console.log('WebSocket connection established.');
+            appendSystemMessage("Connected to chat!");
+        };
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            appendChatMessage(data);
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+            appendSystemMessage("Disconnected from chat. Please refresh to reconnect.");
+        };
+
+        // --- Form Submission ---
+
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (message) {
+                // Send message to WebSocket server
+                chatSocket.send(JSON.stringify({
+                    'message': message,
+                    'username': username || "Anonymous"
+                }));
+                chatInput.value = '';
+            }
+        });
+        
+        // --- Helper Functions ---
+
+        function appendSystemMessage(message) {
+            const messageElement = document.createElement('div');
+            messageElement.className = "text-center w-full text-sm text-gray-500 italic my-2";
+            messageElement.innerText = message;
+            chatLog.appendChild(messageElement);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        
+        function appendChatMessage(data) {
+            const isMe = data.username === username;
+            
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${isMe ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`;
+            
+            const usernameElement = document.createElement('p');
+            usernameElement.className = "font-bold text-sm";
+            usernameElement.innerText = isMe ? 'You' : data.username;
+            
+            const messageElement = document.createElement('p');
+            messageElement.innerText = data.message;
+            
+            messageBubble.appendChild(usernameElement);
+            messageBubble.appendChild(messageElement);
+            messageWrapper.appendChild(messageBubble);
+            
+            chatLog.appendChild(messageWrapper);
+            
+            // Auto-scroll to the bottom
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        // --- Initial setup ---
+        if (!username) {
+            chatInput.disabled = true;
+            chatInput.placeholder = "Enter a username first to start chatting.";
+            document.querySelector('#chat-message-submit').disabled = true;
+        } else {
+            // Clear the initial message
+             chatLog.innerHTML = '';
+        }
+
+    </script>
+</body>
+</html>
